@@ -27,9 +27,35 @@ func main() {
 	defer redis.Close()
 
 	log.Print("cancellation worker running")
+	var lastReconcile time.Time
 	for {
 		cancelExpired(ctx, db, redis)
+		if time.Since(lastReconcile) >= 30*time.Second {
+			reconcileStocks(ctx, db, redis)
+			lastReconcile = time.Now()
+		}
 		time.Sleep(cfg.CancelInterval)
+	}
+}
+
+func reconcileStocks(ctx context.Context, db *store.Store, redis *stock.Store) {
+	stocks, err := db.GetCalculatedStocks(ctx)
+	if err != nil {
+		log.Printf("reconcile list stocks failed: %v", err)
+		return
+	}
+	for _, s := range stocks {
+		curr, err := redis.Get(ctx, s.EventID)
+		if err != nil {
+			log.Printf("reconcile get redis stock event=%s failed: %v", s.EventID, err)
+			continue
+		}
+		if curr != s.CalculatedStock {
+			log.Printf("reconcile detected drift event=%s db=%d redis=%d, correcting redis", s.EventID, s.CalculatedStock, curr)
+			if err := redis.Set(ctx, s.EventID, s.CalculatedStock); err != nil {
+				log.Printf("reconcile set redis stock event=%s failed: %v", s.EventID, err)
+			}
+		}
 	}
 }
 

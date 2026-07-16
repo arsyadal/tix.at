@@ -12,6 +12,11 @@ import (
 
 type Store struct{ DB *pgxpool.Pool }
 
+type EventStock struct {
+	EventID         string
+	CalculatedStock int
+}
+
 type ExpiredBooking struct {
 	ID      string
 	EventID string
@@ -50,6 +55,27 @@ func (s *Store) UpsertEvent(ctx context.Context, id, name string, stock int) err
 	return err
 }
 
+func (s *Store) GetCalculatedStocks(ctx context.Context) ([]EventStock, error) {
+	rows, err := s.DB.Query(ctx, `
+		select e.id, e.stock - count(b.id) filter (where b.status = 'PENDING')
+		from events e
+		left join bookings b on b.event_id = e.id
+		group by e.id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []EventStock
+	for rows.Next() {
+		var es EventStock
+		if err := rows.Scan(&es.EventID, &es.CalculatedStock); err != nil {
+			return nil, err
+		}
+		out = append(out, es)
+	}
+	return out, rows.Err()
+}
 func (s *Store) CreateBooking(ctx context.Context, id, eventID, userID string, ttl time.Duration) error {
 	_, err := s.DB.Exec(ctx, `insert into bookings (id, event_id, user_id, status, expires_at) values ($1, $2, $3, 'PENDING', now() + $4::interval)`, id, eventID, userID, ttl.String())
 	return err

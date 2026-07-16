@@ -30,6 +30,14 @@ func (s *Store) Set(ctx context.Context, eventID string, stock int) error {
 	return s.rdb.Set(ctx, key(eventID), stock, 0).Err()
 }
 
+func (s *Store) Get(ctx context.Context, eventID string) (int, error) {
+	v, err := s.rdb.Get(ctx, key(eventID)).Int()
+	if err == redis.Nil {
+		return 0, nil
+	}
+	return v, err
+}
+
 func (s *Store) Reserve(ctx context.Context, eventID string) (bool, error) {
 	v, err := reserveScript.Run(ctx, s.rdb, []string{key(eventID)}).Int64()
 	return v == 1, err
