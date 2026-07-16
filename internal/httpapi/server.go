@@ -85,6 +85,10 @@ func (s *Server) createBooking(w http.ResponseWriter, r *http.Request) {
 	bookingID := randID()
 	if err := s.store.CreateBooking(r.Context(), bookingID, req.EventID, req.UserID, s.bookingTTL); err != nil {
 		_ = s.stock.Release(context.Background(), req.EventID)
+		if s.store.IsUniqueViolation(err) {
+			writeError(w, http.StatusConflict, "already booked")
+			return
+		}
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

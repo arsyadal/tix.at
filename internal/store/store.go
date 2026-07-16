@@ -2,9 +2,11 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -32,6 +34,10 @@ func New(ctx context.Context, url string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
+	if _, err := db.Exec(ctx, `create unique index if not exists bookings_user_event_active_idx on bookings(user_id, event_id) where status != 'CANCELLED'`); err != nil {
+		db.Close()
+		return nil, err
+	}
 	return &Store{DB: db}, nil
 }
 
@@ -47,6 +53,11 @@ func (s *Store) UpsertEvent(ctx context.Context, id, name string, stock int) err
 func (s *Store) CreateBooking(ctx context.Context, id, eventID, userID string, ttl time.Duration) error {
 	_, err := s.DB.Exec(ctx, `insert into bookings (id, event_id, user_id, status, expires_at) values ($1, $2, $3, 'PENDING', now() + $4::interval)`, id, eventID, userID, ttl.String())
 	return err
+}
+
+func (s *Store) IsUniqueViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
 func (s *Store) CancelBooking(ctx context.Context, bookingID string) error {

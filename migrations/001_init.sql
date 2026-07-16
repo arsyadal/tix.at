@@ -18,3 +18,4 @@ create table if not exists bookings (
 create index if not exists bookings_event_id_idx on bookings(event_id);
 create index if not exists bookings_status_idx on bookings(status);
 create index if not exists bookings_expires_at_idx on bookings(expires_at);
+create unique index if not exists bookings_user_event_active_idx on bookings(user_id, event_id) where status != 'CANCELLED';
