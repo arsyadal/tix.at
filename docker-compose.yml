@@ -1,0 +1,62 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: tix
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:4-management-alpine
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  api:
+    build: .
+    command: api
+    depends_on:
+      - postgres
+      - redis
+      - rabbitmq
+    environment: &env
+      POSTGRES_URL: postgres://postgres:postgres@postgres:5432/tix?sslmode=disable
+      REDIS_ADDR: redis:6379
+      RABBIT_URL: amqp://guest:guest@rabbitmq:5672/
+    ports:
+      - "8080:8080"
+
+  payment-worker:
+    build: .
+    command: payment-worker
+    depends_on:
+      - api
+    environment:
+      <<: *env
+      PAYMENT_DELAY: 3s
+
+  notification:
+    build: .
+    command: notification
+    depends_on:
+      - payment-worker
+    environment: *env
+
+  cancellation-worker:
+    build: .
+    command: cancellation-worker
+    depends_on:
+      - api
+    environment:
+      <<: *env
+      BOOKING_TTL: 5m
+      CANCEL_INTERVAL: 10s
