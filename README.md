@@ -41,16 +41,28 @@ Load test:
 k6 run loadtest/booking.js
 ```
 
-## Test result
+## Test result & System validation
 
-| Skenario | Hasil |
-|---|---:|
-| 150 booking paralel, stock 100 | 100 accepted, 50 sold out |
-| Redis stock akhir | 0 |
-| Booking DB dibuat | 100 |
-| Overselling | 0 |
-| Payment worker mati lalu nyala | queue redeliver, 2 booking jadi `PAID` |
-| Booking expired | status `CANCELLED`, Redis stock balik |
+### 1. High-Concurrency Load Test (k6)
+Skenario: 100 Virtual Users (VUs) membombardir `POST /bookings` terus-menerus selama 10 detik pada event dengan kuota awal 100 tiket.
+
+* **Throughput:** **28,162 requests/second** (RPS) pada localhost.
+* **Latency (HTTP Request Duration):** 
+  * Average: **3.28 ms**
+  * Median (p50): **2.35 ms**
+  * 90th percentile (p90): **6.08 ms**
+  * 95th percentile (p95): **8.23 ms**
+* **Success Rate:** **100.00%** (seluruh 283,991 request mengembalikan `202 Accepted` atau `409 Conflict`, tidak ada error 500 / gateway timeout).
+* **Inventory Check:** Tepat **100 booking** dibuat di PostgreSQL. Stok Redis pas berkurang dari 100 ke 0. **Overselling rate = 0%**.
+
+### 2. Failure & Resilience Scenarios
+
+| Skenario Uji | Tindakan / Trigger | Hasil yang Diharapkan & Tervalidasi | Status |
+| :--- | :--- | :--- | :---: |
+| **Worker Decoupling** | Matikan `payment-worker`, kirim 2 booking. | Antrean menumpuk aman di RabbitMQ (`booking.created`). Saat worker dinyalakan kembali, antrean diproses habis dan booking update jadi `PAID`. | **PASSED** |
+| **Double Booking Block** | Kirim 2 booking berturut-turut untuk `user_a` pada `event_1`. | Request ke-2 ditolak instan dengan `409 already booked` berkat *partial unique index* di Postgres. Stok Redis otomatis dibalikkan (`Release`). | **PASSED** |
+| **Eventual Consistency** | Stok `event_1` di Postgres bernilai 4, tapi stok Redis diubah manual ke 99. | Dalam waktu maks 30 detik, `cancellation-worker` (Reconciler Loop) mendeteksi drift dan mengoreksi kembali stok Redis ke 4. | **PASSED** |
+| **Booking Expiry (TTL)** | Buat booking `PENDING` lalu ubah `expires_at` ke masa lalu. | `cancellation-worker` mengubah status booking menjadi `CANCELLED` dan mengembalikan kuota ke Redis (+1). | **PASSED** |
 
 ## Design decisions
 
