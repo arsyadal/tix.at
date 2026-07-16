@@ -3,93 +3,155 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>tix.at — Ticket Dashboard</title>
+  <title>tix.at — high-concurrency ticket reservation</title>
+  <!-- Beautiful Geist Sans & Mono Fonts -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/font/sans.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/geist@1.3.0/dist/font/mono.min.css">
   <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Geist Sans', 'system-ui', 'sans-serif'],
+            mono: ['Geist Mono', 'monospace'],
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Clean custom scrollbar matching Shadcn UI zinc aesthetic */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #09090b; /* zinc-950 */
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #27272a; /* zinc-800 */
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3f3f46; /* zinc-700 */
+    }
+  </style>
 </head>
-<body class="bg-gray-900 text-gray-100 min-h-screen font-sans">
-  <header class="border-b border-gray-800 bg-gray-950 py-4 px-6 shadow-md">
-    <div class="max-w-6xl mx-auto flex items-center justify-between">
-      <div class="flex items-center space-x-3">
-        <div class="bg-red-500 text-white font-bold px-3 py-1 rounded text-lg tracking-wider">TIX</div>
-        <span class="text-xl font-semibold tracking-tight text-white">tix.at</span>
+<body class="bg-zinc-950 text-zinc-100 min-h-screen font-sans antialiased selection:bg-zinc-800 selection:text-zinc-100">
+  
+  <!-- Header -->
+  <header class="sticky top-0 z-50 w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto flex h-14 items-center justify-between px-6">
+      <div class="flex items-center space-x-2.5">
+        <svg class="h-5 w-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v14"/><path d="M9 10h1"/><path d="M9 14h1"/><path d="M14 10h1"/><path d="M14 14h1"/></svg>
+        <span class="font-bold tracking-tight text-white text-sm">tix.at</span>
+        <span class="text-[10px] uppercase font-mono font-medium tracking-widest text-zinc-500 bg-zinc-900 border border-zinc-800 px-1.5 py-0.5 rounded">v1.0.0</span>
       </div>
-      <div class="flex items-center space-x-4">
-        <span class="flex h-3 w-3 relative">
-          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-          <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+      
+      <div class="flex items-center space-x-3 text-xs text-zinc-400">
+        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-zinc-900 border border-zinc-800">
+          <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="font-mono text-[10px] text-zinc-300">redis/lua live</span>
         </span>
-        <span class="text-sm text-gray-400">System Connected</span>
       </div>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-    <!-- Left column: Creator & War simulator -->
+  <!-- Main Content Layout -->
+  <main class="max-w-6xl mx-auto p-6 md:p-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+    
+    <!-- Left Column (Inputs/Simulations) -->
     <div class="space-y-6">
-      <!-- Create Event -->
-      <section class="bg-gray-950 p-6 rounded-lg border border-gray-800 shadow-sm">
-        <h2 class="text-lg font-bold text-white mb-4">Create Event</h2>
+      <!-- Create Event Card -->
+      <div class="bg-zinc-900/40 rounded-xl border border-zinc-800 p-6 shadow-sm">
+        <div class="space-y-1 mb-6">
+          <h3 class="font-semibold text-zinc-100 tracking-tight">Create Event</h3>
+          <p class="text-xs text-zinc-400">Add a new event into Postgres and initialize the Redis stock counter.</p>
+        </div>
+        
         <form id="event-form" class="space-y-4">
-          <div>
-            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Event ID</label>
-            <input type="text" id="event-id" required placeholder="e.g. concert-2" class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500">
+          <div class="space-y-1.5">
+            <label class="text-xs font-medium text-zinc-400">Event ID</label>
+            <input type="text" id="event-id" required placeholder="e.g. coldplay-2026" class="w-full bg-zinc-950 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 transition">
           </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Event Name</label>
-            <input type="text" id="event-name" required placeholder="e.g. Coldplay Live" class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500">
+          <div class="space-y-1.5">
+            <label class="text-xs font-medium text-zinc-400">Event Name</label>
+            <input type="text" id="event-name" required placeholder="e.g. Coldplay Asia Tour" class="w-full bg-zinc-950 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 transition">
           </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Initial Stock</label>
-            <input type="number" id="event-stock" required min="1" placeholder="e.g. 50" class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500">
+          <div class="space-y-1.5">
+            <label class="text-xs font-medium text-zinc-400">Available Stock</label>
+            <input type="number" id="event-stock" required min="1" placeholder="e.g. 100" class="w-full bg-zinc-950 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 focus:outline-none focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 transition">
           </div>
-          <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">Create Event</button>
+          <button type="submit" class="w-full bg-zinc-100 hover:bg-zinc-200 text-zinc-900 font-medium py-2 px-4 rounded-md text-sm transition">Create Event</button>
         </form>
-      </section>
+      </div>
 
-      <!-- Simulate War Ticket -->
-      <section class="bg-gray-950 p-6 rounded-lg border border-gray-800 shadow-sm">
-        <h2 class="text-lg font-bold text-white mb-4 font-mono">⚡ War Ticket Simulator</h2>
-        <p class="text-xs text-gray-400 mb-4">Simulate multiple concurrent booking requests to test anti-overselling and unique user booking logic.</p>
-        <div class="space-y-3">
-          <div>
-            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Target Event</label>
-            <select id="sim-event-select" class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500">
+      <!-- Ticket War Simulator Card -->
+      <div class="bg-zinc-900/40 rounded-xl border border-zinc-800 p-6 shadow-sm">
+        <div class="space-y-1 mb-6">
+          <h3 class="font-semibold text-zinc-100 tracking-tight flex items-center gap-1.5">
+            <svg class="h-4 w-4 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-2 10h9L9 22l2-10H3L13 2Z"/></svg>
+            War Ticket Simulator
+          </h3>
+          <p class="text-xs text-zinc-400">Simulate concurrent high-load traffic to verify transactional safety.</p>
+        </div>
+        
+        <div class="space-y-4">
+          <div class="space-y-1.5">
+            <label class="text-xs font-medium text-zinc-400">Target Event</label>
+            <select id="sim-event-select" class="w-full bg-zinc-950 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 transition">
               <option value="">Select an event...</option>
             </select>
           </div>
-          <div>
-            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Concurrent Requests</label>
-            <input type="number" id="sim-concurrency" value="10" min="1" max="50" class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500">
+          <div class="space-y-1.5">
+            <label class="text-xs font-medium text-zinc-400">Concurrent Connections</label>
+            <input type="number" id="sim-concurrency" value="10" min="1" max="50" class="w-full bg-zinc-950 border border-zinc-800 rounded-md px-3 py-2 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-400 focus:border-zinc-400 transition">
           </div>
-          <button id="sim-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-2 px-4 rounded transition">Start War Simulation</button>
+          <button id="sim-btn" class="w-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-100 font-medium py-2 px-4 rounded-md text-sm transition">Trigger Concurrent Bookings</button>
         </div>
-      </section>
+      </div>
     </div>
 
-    <!-- Center column: Event list -->
-    <div class="md:col-span-2 space-y-6">
-      <section class="bg-gray-950 p-6 rounded-lg border border-gray-800 shadow-sm">
-        <div class="flex items-center justify-between mb-4">
-          <h2 class="text-lg font-bold text-white">Active Events</h2>
-          <button id="refresh-btn" class="text-xs bg-gray-900 hover:bg-gray-800 text-gray-300 font-semibold py-1.5 px-3 rounded border border-gray-800 transition">Refresh List</button>
+    <!-- Right/Center Column (Active Events & Logs) -->
+    <div class="lg:col-span-2 space-y-6">
+      
+      <!-- Event List Card -->
+      <div class="bg-zinc-900/40 rounded-xl border border-zinc-800 p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-6">
+          <div class="space-y-1">
+            <h3 class="font-semibold text-zinc-100 tracking-tight">Active Events</h3>
+            <p class="text-xs text-zinc-400">Live monitoring of ticket inventory. Updated dynamically.</p>
+          </div>
+          <button id="refresh-btn" class="inline-flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 font-medium py-1.5 px-3 rounded-md text-xs transition">
+            <svg class="h-3 w-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M16 3h5v5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 21H3v-5"/></svg>
+            Sync Now
+          </button>
         </div>
-        <div id="event-list" class="space-y-4">
+
+        <div id="event-list" class="space-y-3.5">
           <!-- Loaded via JS -->
-          <div class="text-center py-8 text-gray-500">No events found. Create one to begin.</div>
+          <div class="text-center py-10 border border-dashed border-zinc-800 rounded-lg text-zinc-500 text-sm">
+            No events registered. Create one using the form on the left.
+          </div>
         </div>
-      </section>
+      </div>
 
-      <!-- Logs -->
-      <section class="bg-gray-950 p-6 rounded-lg border border-gray-800 shadow-sm">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Live System Logs</h2>
-          <button id="clear-logs-btn" class="text-xs text-gray-500 hover:text-gray-400">Clear</button>
+      <!-- Realtime Event Stream Logs -->
+      <div class="bg-zinc-900/40 rounded-xl border border-zinc-800 p-6 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <div class="space-y-1">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-zinc-400">Stream Logs</h3>
+          </div>
+          <button id="clear-logs-btn" class="text-[10px] uppercase font-mono text-zinc-500 hover:text-zinc-400 transition">Clear Stream</button>
         </div>
-        <div id="logs-container" class="bg-gray-900 border border-gray-850 p-4 rounded font-mono text-xs h-64 overflow-y-auto space-y-1.5">
-          <div class="text-gray-600">// Logs will appear here during activity...</div>
+        <div id="logs-container" class="bg-zinc-950 border border-zinc-850 p-4 rounded-lg font-mono text-[11px] h-64 overflow-y-auto space-y-2">
+          <div class="text-zinc-700">// Awaiting transaction payload stream...</div>
         </div>
-      </section>
+      </div>
+
     </div>
+
   </main>
 
   <script>
@@ -104,12 +166,18 @@
     function log(msg, type = 'info') {
       const el = document.createElement('div');
       const time = new Date().toLocaleTimeString();
-      let color = 'text-gray-400';
-      if (type === 'success') color = 'text-green-400';
-      if (type === 'warn') color = 'text-yellow-400';
-      if (type === 'error') color = 'text-red-400';
-      el.className = color;
-      el.textContent = `[${time}] ${msg}`;
+      let badge = '';
+      if (type === 'success') {
+        badge = '<span class="text-emerald-400 border border-emerald-950 bg-emerald-950/20 px-1 py-0.5 rounded mr-2 font-bold">[202 OK]</span>';
+      } else if (type === 'warn') {
+        badge = '<span class="text-amber-400 border border-amber-950 bg-amber-950/20 px-1 py-0.5 rounded mr-2 font-bold">[409 REJECT]</span>';
+      } else if (type === 'error') {
+        badge = '<span class="text-rose-400 border border-rose-950 bg-rose-950/20 px-1 py-0.5 rounded mr-2 font-bold">[ERR]</span>';
+      } else {
+        badge = '<span class="text-zinc-400 border border-zinc-800 bg-zinc-900 px-1 py-0.5 rounded mr-2 font-bold">[SYS]</span>';
+      }
+      el.className = 'flex items-start text-zinc-300 leading-relaxed py-0.5 border-b border-zinc-900/40';
+      el.innerHTML = `<span class="text-zinc-600 mr-2 shrink-0">${time}</span> ${badge} <span class="break-all">${msg}</span>`;
       logsContainer.appendChild(el);
       logsContainer.scrollTop = logsContainer.scrollHeight;
     }
@@ -125,29 +193,30 @@
         simEventSelect.innerHTML = '<option value="">Select an event...</option>';
         
         if (data.length === 0) {
-          eventList.innerHTML = '<div class="text-center py-8 text-gray-500">No events found. Create one to begin.</div>';
+          eventList.innerHTML = '<div class="text-center py-10 border border-dashed border-zinc-800 rounded-lg text-zinc-500 text-sm">No events registered. Create one using the form on the left.</div>';
           return;
         }
 
         data.forEach(ev => {
           // List entry
           const item = document.createElement('div');
-          item.className = 'bg-gray-900 border border-gray-850 p-4 rounded flex items-center justify-between';
-          
           const isSoldOut = ev.stock <= 0;
           
+          item.className = 'bg-zinc-950 border border-zinc-800/80 p-4 rounded-lg flex items-center justify-between hover:border-zinc-700 transition duration-150';
           item.innerHTML = `
-            <div>
-              <h3 class="font-bold text-white">${ev.name}</h3>
-              <p class="text-xs text-gray-400">ID: ${ev.id}</p>
+            <div class="space-y-1">
+              <h4 class="font-semibold text-zinc-100 text-sm leading-none">${ev.name}</h4>
+              <p class="text-[11px] font-mono text-zinc-500">${ev.id}</p>
             </div>
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-6">
               <div class="text-right">
-                <span class="text-xs text-gray-400">Available Stock</span>
-                <div class="text-lg font-bold ${isSoldOut ? 'text-red-500' : 'text-green-400'}">${ev.stock}</div>
+                <span class="text-[10px] text-zinc-500 uppercase tracking-wider block">Stock</span>
+                <div class="text-sm font-bold font-mono ${isSoldOut ? 'text-rose-500' : 'text-zinc-100'}">
+                  ${isSoldOut ? 'SOLD OUT' : ev.stock}
+                </div>
               </div>
-              <button onclick="bookTicket('${ev.id}')" ${isSoldOut ? 'disabled' : ''} class="bg-red-600 disabled:bg-gray-800 disabled:text-gray-500 hover:bg-red-700 text-white font-bold py-1.5 px-4 rounded text-sm transition">
-                ${isSoldOut ? 'Sold Out' : 'Buy'}
+              <button onclick="bookTicket('${ev.id}')" ${isSoldOut ? 'disabled' : ''} class="bg-zinc-100 disabled:bg-zinc-900 disabled:text-zinc-600 hover:bg-zinc-200 text-zinc-950 disabled:border disabled:border-zinc-800 font-semibold py-1.5 px-3 rounded-md text-xs transition duration-150">
+                Buy Ticket
               </button>
             </div>
           `;
@@ -156,7 +225,7 @@
           // Select option
           const opt = document.createElement('option');
           opt.value = ev.id;
-          opt.textContent = `${ev.name} (stock: ${ev.stock})`;
+          opt.textContent = `${ev.name} (stok: ${ev.stock})`;
           simEventSelect.appendChild(opt);
         });
       } catch (err) {
@@ -164,7 +233,7 @@
       }
     }
 
-    async function bookTicket(eventID, userID = 'u-web') {
+    async function bookTicket(eventID, userID = 'web-user') {
       try {
         const res = await fetch('/bookings', {
           method: 'POST',
@@ -173,15 +242,15 @@
         });
         const data = await res.json();
         if (res.status === 202) {
-          log(`Booking accepted for ${userID}: ${data.booking_id} (PENDING)`, 'success');
+          log(`Booking accepted for ${userID} -> ${data.booking_id} (PENDING)`, 'success');
           loadEvents();
         } else if (res.status === 409) {
-          log(`Booking rejected for ${userID}: ${data.error}`, 'warn');
+          log(`Booking rejected for ${userID} -> ${data.error}`, 'warn');
         } else {
-          log(`Booking error for ${userID}: ${data.error}`, 'error');
+          log(`Booking failed: ${data.error}`, 'error');
         }
       } catch (err) {
-        log(`Booking request failed: ${err.message}`, 'error');
+        log(`Request error: ${err.message}`, 'error');
       }
     }
 
@@ -199,7 +268,7 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error);
-        log(`Event created: ${id}`, 'success');
+        log(`Event created successfully: ${id} with stock ${stock}`, 'info');
         eventForm.reset();
         loadEvents();
       } catch (err) {
@@ -210,11 +279,11 @@
     simBtn.addEventListener('click', async () => {
       const eventID = simEventSelect.value;
       if (!eventID) {
-        alert('Please select a target event first.');
+        alert('Please select an event to simulate.');
         return;
       }
       const count = parseInt(document.getElementById('sim-concurrency').value) || 10;
-      log(`Starting concurrent simulation of ${count} requests for ${eventID}...`, 'info');
+      log(`Simulating ticket war with ${count} concurrent requests for ${eventID}...`, 'info');
       
       const promises = [];
       for (let i = 1; i <= count; i++) {
@@ -222,17 +291,17 @@
       }
       
       await Promise.all(promises);
-      log(`Simulation finished. Refreshing in 1 second to fetch processing status...`, 'info');
+      log(`Simulation finished. Synchronization in progress...`, 'info');
       setTimeout(loadEvents, 1000);
     });
 
     refreshBtn.addEventListener('click', loadEvents);
-    clearLogsBtn.addEventListener('click', () => { logsContainer.innerHTML = ''; });
+    clearLogsBtn.addEventListener('click', () => { logsContainer.innerHTML = '<div class="text-zinc-700">// Awaiting transaction payload stream...</div>'; });
 
-    // Initial load
+    // Init
     loadEvents();
-    // Auto refresh lists every 4 seconds to observe asynchronous updates from workers
-    setInterval(loadEvents, 4000);
+    // Poll every 3 seconds to keep UI stock indicator synced with async payment/cancel workers
+    setInterval(loadEvents, 3000);
   </script>
 </body>
 </html>
