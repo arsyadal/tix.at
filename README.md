@@ -58,6 +58,7 @@ k6 run loadtest/booking.js
 - **RabbitMQ untuk pembayaran:** API cepat balas `PENDING`; payment diproses async.
 - **PostgreSQL sebagai source of truth:** event dan booking final disimpan di DB.
 - **Cancellation worker:** booking `PENDING` lewat TTL jadi `CANCELLED`, stock Redis dikembalikan.
+- **Stock Reconciler:** Sinkronisasi berkala (eventual consistency) jika terjadi drift/ketidaksesuaian stok antara Redis dan PostgreSQL.
 - **Satu bahasa BE:** semua service Go supaya fokus ke concurrency, bukan polyglot setup.
 
 ## Struktur
