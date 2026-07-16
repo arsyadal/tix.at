@@ -10,5 +10,7 @@ RUN go build -o /out/api ./cmd/api \
 
 FROM alpine:3.21
 RUN adduser -D app
-USER app
+WORKDIR /app
 COPY --from=build /out/* /usr/local/bin/
+COPY --from=build /src/public ./public
+USER app

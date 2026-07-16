@@ -17,6 +17,12 @@ type EventStock struct {
 	CalculatedStock int
 }
 
+type Event struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Stock int    `json:"stock"`
+}
+
 type ExpiredBooking struct {
 	ID      string
 	EventID string
@@ -73,6 +79,28 @@ func (s *Store) GetCalculatedStocks(ctx context.Context) ([]EventStock, error) {
 			return nil, err
 		}
 		out = append(out, es)
+	}
+	return out, rows.Err()
+}
+func (s *Store) GetEvents(ctx context.Context) ([]Event, error) {
+	rows, err := s.DB.Query(ctx, `
+		select e.id, e.name, e.stock - count(b.id) filter (where b.status = 'PENDING')
+		from events e
+		left join bookings b on b.event_id = e.id
+		group by e.id, e.name, e.stock
+		order by e.id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var out []Event
+	for rows.Next() {
+		var ev Event
+		if err := rows.Scan(&ev.ID, &ev.Name, &ev.Stock); err != nil {
+			return nil, err
+		}
+		out = append(out, ev)
 	}
 	return out, rows.Err()
 }

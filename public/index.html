@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tix.at — Ticket Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-900 text-gray-100 min-h-screen font-sans">
+  <header class="border-b border-gray-800 bg-gray-950 py-4 px-6 shadow-md">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="bg-red-500 text-white font-bold px-3 py-1 rounded text-lg tracking-wider">TIX</div>
+        <span class="text-xl font-semibold tracking-tight text-white">tix.at</span>
+      </div>
+      <div class="flex items-center space-x-4">
+        <span class="flex h-3 w-3 relative">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+        </span>
+        <span class="text-sm text-gray-400">System Connected</span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+    <!-- Left column: Creator & War simulator -->
+    <div class="space-y-6">
+      <!-- Create Event -->
+      <section class="bg-gray-950 p-6 rounded-lg border border-gray-800 shadow-sm">
+        <h2 class="text-lg font-bold text-white mb-4">Create Event</h2>
+        <form id="event-form" class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Event ID</label>
+            <input type="text" id="event-id" required placeholder="e.g. concert-2" class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Event Name</label>
+            <input type="text" id="event-name" required placeholder="e.g. Coldplay Live" class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Initial Stock</label>
+            <input type="number" id="event-stock" required min="1" placeholder="e.g. 50" class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500">
+          </div>
+          <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded transition">Create Event</button>
+        </form>
+      </section>
+
+      <!-- Simulate War Ticket -->
+      <section class="bg-gray-950 p-6 rounded-lg border border-gray-800 shadow-sm">
+        <h2 class="text-lg font-bold text-white mb-4 font-mono">⚡ War Ticket Simulator</h2>
+        <p class="text-xs text-gray-400 mb-4">Simulate multiple concurrent booking requests to test anti-overselling and unique user booking logic.</p>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Target Event</label>
+            <select id="sim-event-select" class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500">
+              <option value="">Select an event...</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Concurrent Requests</label>
+            <input type="number" id="sim-concurrency" value="10" min="1" max="50" class="w-full bg-gray-900 border border-gray-800 rounded px-3 py-2 text-white focus:outline-none focus:border-red-500">
+          </div>
+          <button id="sim-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-black font-bold py-2 px-4 rounded transition">Start War Simulation</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Center column: Event list -->
+    <div class="md:col-span-2 space-y-6">
+      <section class="bg-gray-950 p-6 rounded-lg border border-gray-800 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-white">Active Events</h2>
+          <button id="refresh-btn" class="text-xs bg-gray-900 hover:bg-gray-800 text-gray-300 font-semibold py-1.5 px-3 rounded border border-gray-800 transition">Refresh List</button>
+        </div>
+        <div id="event-list" class="space-y-4">
+          <!-- Loaded via JS -->
+          <div class="text-center py-8 text-gray-500">No events found. Create one to begin.</div>
+        </div>
+      </section>
+
+      <!-- Logs -->
+      <section class="bg-gray-950 p-6 rounded-lg border border-gray-800 shadow-sm">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Live System Logs</h2>
+          <button id="clear-logs-btn" class="text-xs text-gray-500 hover:text-gray-400">Clear</button>
+        </div>
+        <div id="logs-container" class="bg-gray-900 border border-gray-850 p-4 rounded font-mono text-xs h-64 overflow-y-auto space-y-1.5">
+          <div class="text-gray-600">// Logs will appear here during activity...</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const eventForm = document.getElementById('event-form');
+    const eventList = document.getElementById('event-list');
+    const simEventSelect = document.getElementById('sim-event-select');
+    const simBtn = document.getElementById('sim-btn');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const clearLogsBtn = document.getElementById('clear-logs-btn');
+    const logsContainer = document.getElementById('logs-container');
+
+    function log(msg, type = 'info') {
+      const el = document.createElement('div');
+      const time = new Date().toLocaleTimeString();
+      let color = 'text-gray-400';
+      if (type === 'success') color = 'text-green-400';
+      if (type === 'warn') color = 'text-yellow-400';
+      if (type === 'error') color = 'text-red-400';
+      el.className = color;
+      el.textContent = `[${time}] ${msg}`;
+      logsContainer.appendChild(el);
+      logsContainer.scrollTop = logsContainer.scrollHeight;
+    }
+
+    async function loadEvents() {
+      try {
+        const res = await fetch('/events');
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to fetch');
+        
+        // Update list
+        eventList.innerHTML = '';
+        simEventSelect.innerHTML = '<option value="">Select an event...</option>';
+        
+        if (data.length === 0) {
+          eventList.innerHTML = '<div class="text-center py-8 text-gray-500">No events found. Create one to begin.</div>';
+          return;
+        }
+
+        data.forEach(ev => {
+          // List entry
+          const item = document.createElement('div');
+          item.className = 'bg-gray-900 border border-gray-850 p-4 rounded flex items-center justify-between';
+          
+          const isSoldOut = ev.stock <= 0;
+          
+          item.innerHTML = `
+            <div>
+              <h3 class="font-bold text-white">${ev.name}</h3>
+              <p class="text-xs text-gray-400">ID: ${ev.id}</p>
+            </div>
+            <div class="flex items-center space-x-4">
+              <div class="text-right">
+                <span class="text-xs text-gray-400">Available Stock</span>
+                <div class="text-lg font-bold ${isSoldOut ? 'text-red-500' : 'text-green-400'}">${ev.stock}</div>
+              </div>
+              <button onclick="bookTicket('${ev.id}')" ${isSoldOut ? 'disabled' : ''} class="bg-red-600 disabled:bg-gray-800 disabled:text-gray-500 hover:bg-red-700 text-white font-bold py-1.5 px-4 rounded text-sm transition">
+                ${isSoldOut ? 'Sold Out' : 'Buy'}
+              </button>
+            </div>
+          `;
+          eventList.appendChild(item);
+
+          // Select option
+          const opt = document.createElement('option');
+          opt.value = ev.id;
+          opt.textContent = `${ev.name} (stock: ${ev.stock})`;
+          simEventSelect.appendChild(opt);
+        });
+      } catch (err) {
+        log(`Load events failed: ${err.message}`, 'error');
+      }
+    }
+
+    async function bookTicket(eventID, userID = 'u-web') {
+      try {
+        const res = await fetch('/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event_id: eventID, user_id: userID })
+        });
+        const data = await res.json();
+        if (res.status === 202) {
+          log(`Booking accepted for ${userID}: ${data.booking_id} (PENDING)`, 'success');
+          loadEvents();
+        } else if (res.status === 409) {
+          log(`Booking rejected for ${userID}: ${data.error}`, 'warn');
+        } else {
+          log(`Booking error for ${userID}: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        log(`Booking request failed: ${err.message}`, 'error');
+      }
+    }
+
+    eventForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = document.getElementById('event-id').value;
+      const name = document.getElementById('event-name').value;
+      const stock = parseInt(document.getElementById('event-stock').value);
+
+      try {
+        const res = await fetch('/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, name, stock })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        log(`Event created: ${id}`, 'success');
+        eventForm.reset();
+        loadEvents();
+      } catch (err) {
+        log(`Create event failed: ${err.message}`, 'error');
+      }
+    });
+
+    simBtn.addEventListener('click', async () => {
+      const eventID = simEventSelect.value;
+      if (!eventID) {
+        alert('Please select a target event first.');
+        return;
+      }
+      const count = parseInt(document.getElementById('sim-concurrency').value) || 10;
+      log(`Starting concurrent simulation of ${count} requests for ${eventID}...`, 'info');
+      
+      const promises = [];
+      for (let i = 1; i <= count; i++) {
+        promises.push(bookTicket(eventID, `sim-user-${i}`));
+      }
+      
+      await Promise.all(promises);
+      log(`Simulation finished. Refreshing in 1 second to fetch processing status...`, 'info');
+      setTimeout(loadEvents, 1000);
+    });
+
+    refreshBtn.addEventListener('click', loadEvents);
+    clearLogsBtn.addEventListener('click', () => { logsContainer.innerHTML = ''; });
+
+    // Initial load
+    loadEvents();
+    // Auto refresh lists every 4 seconds to observe asynchronous updates from workers
+    setInterval(loadEvents, 4000);
+  </script>
+</body>
+</html>

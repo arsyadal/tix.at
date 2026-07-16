@@ -34,8 +34,21 @@ func (s *Server) Handler() http.Handler {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	mux.HandleFunc("POST /events", s.createEvent)
+	mux.HandleFunc("GET /events", s.listEvents)
 	mux.HandleFunc("POST /bookings", s.createBooking)
+
+	mux.Handle("GET /{$}", http.FileServer(http.Dir("public")))
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("public"))))
 	return mux
+}
+
+func (s *Server) listEvents(w http.ResponseWriter, r *http.Request) {
+	events, err := s.store.GetEvents(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, events)
 }
 
 type eventReq struct {
