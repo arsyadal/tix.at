@@ -60,3 +60,13 @@ services:
       <<: *env
       BOOKING_TTL: 5m
       CANCEL_INTERVAL: 10s
+
+  k6:
+    image: grafana/k6:latest
+    volumes:
+      - ./loadtest:/loadtest:ro
+    environment:
+      - BASE_URL=http://api:8080
+    profiles:
+      - tools
+    entrypoint: ["k6", "run", "/loadtest/booking.js"]
